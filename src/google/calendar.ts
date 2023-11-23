@@ -18,6 +18,7 @@ export async function getEventList() {
   const res = await calendar.events.list({
     auth,
     calendarId: process.env.GOOGLE_CALENDAR_ID,
+    timeMin: new Date().toISOString(),
   });
 
   return res.data;

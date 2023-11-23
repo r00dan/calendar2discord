@@ -1,7 +1,10 @@
 import {
+  ChannelType,
   CommandInteraction,
   EmbedBuilder,
   SlashCommandBuilder,
+  GuildScheduledEventEntityType,
+  GuildScheduledEventPrivacyLevel,
 } from "discord.js";
 import { getEventList } from "../../google/calendar";
 
@@ -11,40 +14,56 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: CommandInteraction) {
   const data = await getEventList();
-  const result = data.items?.map(
-    ({
-      id,
-      summary,
-      description,
-      attendees,
-      organizer,
-      created,
-      htmlLink,
-      start,
-    }) =>
-      new EmbedBuilder()
-        .setTitle(summary ?? "No title")
-        .setDescription(description ?? "No description")
-        .setColor("Random")
-        .addFields(
-          {
-            name: "Organizer email",
-            value: organizer?.email ?? "No orginizer email",
-          },
-          {
-            name: "Organizer name",
-            value: organizer?.displayName ?? "No organizer name",
-          },
-          { name: "Created", value: created ?? "No created date" },
-          { name: "Start", value: start?.dateTime ?? "No start date" },
-          {
-            name: "Attendees",
-            value:
-              attendees?.map(({ email }) => email).toString() ?? "No attendees",
-          },
-          { name: "Link", value: htmlLink ?? "No link" }
-        )
-  );
 
-  return interaction.reply({ embeds: result });
+  if (data && data.items && data.items.length) {
+    const fields = data.items.map(({ summary, start }) => ({
+      name: summary ?? "no summary",
+      value:
+        start && start.dateTime
+          ? new Date(start.dateTime).toLocaleString("en-US", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "no start date/time",
+    }));
+
+    const embed = new EmbedBuilder()
+      .setTitle("Google Calendar event list")
+      .setColor("Random")
+      .addFields(...fields);
+
+    const category = interaction.guild?.channels.cache.find(
+      ({ name }) => name.toLowerCase() === "events"
+    );
+
+    data.items.forEach(async ({ summary, start }) => {
+      const channel = await interaction.guild?.channels.create({
+        name: summary ?? "Event /wo title",
+        type: ChannelType.GuildVoice,
+        permissionOverwrites: [
+          { id: interaction.guild.id, deny: ["SendMessages"] },
+        ],
+        parent: category?.parentId,
+      });
+
+      interaction.guild?.scheduledEvents.create({
+        entityType: GuildScheduledEventEntityType.Voice,
+        name: summary ?? "Event /wo title",
+        privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
+        scheduledStartTime:
+          start && start.dateTime
+            ? new Date(start.dateTime)
+            : new Date("31/12/2025"),
+        channel,
+      });
+    });
+
+    return interaction.reply({ embeds: [embed] });
+  }
+
+  return interaction.reply("There is no events in your Google Calendar :(");
 }
