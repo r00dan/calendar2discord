@@ -8,6 +8,9 @@ import {
 } from "discord.js";
 import { getEventList } from "../../google/calendar";
 
+import dotenv from "dotenv";
+dotenv.config();
+
 export const data = new SlashCommandBuilder()
   .setName("events")
   .setDescription("Shows all Google Calendar events");
@@ -37,7 +40,8 @@ export async function execute(interaction: CommandInteraction) {
       .addFields(...fields);
 
     const category = interaction.guild?.channels.cache.find(
-      ({ name }) => name.toLowerCase() === "events"
+      ({ name }) =>
+        name.toLowerCase() === process.env.DISCORD_EVENTS_CATEGORY_NAME
     );
 
     data.items.forEach(async ({ summary, start }) => {
