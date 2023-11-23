@@ -34,9 +34,3 @@ bot.on("interactionCreate", async (interaction) => {
     commands[commandName as keyof typeof commands].execute(interaction);
   }
 });
-
-bot.on("messageCreate", async (message) => {
-  console.log(message.toString());
-});
-
-console.log(bot.guilds);
